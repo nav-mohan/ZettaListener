@@ -1,3 +1,4 @@
+#include "ms_logger.hpp"
 #include "server.hpp"
 
 int main(int argc, char *argv[])
@@ -18,7 +19,8 @@ int main(int argc, char *argv[])
     }
     catch (std::exception &e)
     {
-        std::cerr << "Exception: " << e.what() << "\n";
+        ms_logger<ERROR>::get_instance().log_to_stdout("Exception: " + e.what());
+        ms_logger<ERROR>::get_instance().log_to_stdout("Exception: " + e.what());
     }
 
     return 0;

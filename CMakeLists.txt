@@ -10,6 +10,7 @@ add_executable(${TARGET_NAME} main.cpp)
 target_include_directories(
     ${TARGET_NAME} PUBLIC 
     libs/server 
+    libs/mslogger
 )
 
 target_link_libraries(
