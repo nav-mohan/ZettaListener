@@ -4,6 +4,8 @@
 #include <boost/asio.hpp>
 #include <memory>
 
+#include "ms_logger.hpp"
+
 class Session : public std::enable_shared_from_this<Session>
 {
 public:

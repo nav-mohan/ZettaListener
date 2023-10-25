@@ -6,11 +6,9 @@
 #include <utility>
 
 #include <boost/asio.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/expressions.hpp>
 
 #include "session.hpp"
+#include "ms_logger.hpp"
 
 class Server
 {
