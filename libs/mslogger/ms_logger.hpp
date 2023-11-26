@@ -1,21 +1,20 @@
-#if !defined(MS_LOGGER_HPP)
-#define MS_LOGGER_HPP
+#if !defined(MSLOGGER_H)
+#define MSLOGGER_H
 
-#include <cstring>
 #include <streambuf>
 #include <stdio.h>
 #include <mutex>
 #include <iostream>
 #include <filesystem> // C++17
 #include <fstream>
-
+#include <cstring>
 #include "utilities.h"
 
-#define DEFAULT_BUFFER_SIZE 128
-#define DEFAULT_LOGROTATE_SIZE 256
+#define DEFAULT_BUFFER_SIZE 1024 // 1KB
+#define DEFAULT_LOGROTATE_SIZE 1*1024*1024 // 1MB
 
 template <LEVELS LOGLEVEL=INFO>
-class ms_logger : public std::streambuf
+class MsLogger : public std::streambuf
 {
 private: // member variables
     static std::mutex mutCout_;
@@ -35,22 +34,22 @@ protected:
     int sync() override;
 
 public:
-    static ms_logger<LOGLEVEL> &get_instance();
+    static MsLogger<LOGLEVEL> &get_instance();
     static void presize_buffer(std::size_t bs); // set buffersize before instantiation. can increase/decrease buffersize
     void set_bufferSize(std::size_t bs); // set bufferSize after instantiation of logger. can only increase buffersize
     void log_to_stdout(std::string msg, LEVELS l=LOGLEVEL);
     void log_to_file(std::string msg, LEVELS l=LOGLEVEL);
 
 private: // contructors
-    ms_logger<LOGLEVEL>();
-    ~ms_logger<LOGLEVEL>();
-    ms_logger<LOGLEVEL>(const ms_logger<LOGLEVEL>&) = delete;
-    ms_logger<LOGLEVEL>& operator= (const ms_logger<LOGLEVEL>&) = delete;
+    MsLogger<LOGLEVEL>();
+    ~MsLogger<LOGLEVEL>();
+    MsLogger<LOGLEVEL>(const MsLogger<LOGLEVEL>&) = delete;
+    MsLogger<LOGLEVEL>& operator= (const MsLogger<LOGLEVEL>&) = delete;
 
 
 
 // public interfaces that would come in handy when running tests
-// the alternative is to derive a fixture from ms_logger
+// the alternative is to derive a fixture from MsLogger
 #if defined(TESTING)
 public:
     std::streamsize pubget_bufferSize() const {return bufferSize_;};
@@ -67,42 +66,42 @@ public:
 
 // instantating static member variables
 template <LEVELS LOGLEVEL>
-char *ms_logger<LOGLEVEL>::buffer_ = nullptr;
+char *MsLogger<LOGLEVEL>::buffer_ = nullptr;
 
 template <LEVELS LOGLEVEL>
-uint16_t ms_logger<LOGLEVEL>::fileindex_ = 1;
+uint16_t MsLogger<LOGLEVEL>::fileindex_ = 1;
 
 template <LEVELS LOGLEVEL>
-std::mutex ms_logger<LOGLEVEL>::mutCout_;
+std::mutex MsLogger<LOGLEVEL>::mutCout_;
 
 template <LEVELS LOGLEVEL>
-std::mutex ms_logger<LOGLEVEL>::mutFile_;
+std::mutex MsLogger<LOGLEVEL>::mutFile_;
 
 template <LEVELS LOGLEVEL>
-std::mutex ms_logger<LOGLEVEL>::mutBuffer_;
+std::mutex MsLogger<LOGLEVEL>::mutBuffer_;
 
 template <LEVELS LOGLEVEL>
-std::ofstream ms_logger<LOGLEVEL>::file_;
+std::ofstream MsLogger<LOGLEVEL>::file_;
 
 template <LEVELS LOGLEVEL>
-std::string ms_logger<LOGLEVEL>::filepath_;
+std::string MsLogger<LOGLEVEL>::filepath_;
 
 template <LEVELS LOGLEVEL>
-std::size_t ms_logger<LOGLEVEL>::bufferSize_ = DEFAULT_BUFFER_SIZE;
+std::size_t MsLogger<LOGLEVEL>::bufferSize_ = DEFAULT_BUFFER_SIZE;
 
 
 
 // Definitions of Templated Class
 
 template <LEVELS LOGLEVEL>
-ms_logger<LOGLEVEL>& ms_logger<LOGLEVEL>::get_instance()
+MsLogger<LOGLEVEL>& MsLogger<LOGLEVEL>::get_instance()
 {
-    static ms_logger<LOGLEVEL> instance;
+    static MsLogger<LOGLEVEL> instance;
     return instance;
 }
 
 template<LEVELS LOGLEVEL>
-void ms_logger<LOGLEVEL>::presize_buffer(std::size_t bs)
+void MsLogger<LOGLEVEL>::presize_buffer(std::size_t bs)
 {
     std::lock_guard<std::mutex> blk(mutBuffer_);
     if(buffer_ == nullptr)
@@ -111,7 +110,7 @@ void ms_logger<LOGLEVEL>::presize_buffer(std::size_t bs)
 }
 
 template <LEVELS LOGLEVEL>
-void ms_logger<LOGLEVEL>::set_bufferSize(std::size_t bs)
+void MsLogger<LOGLEVEL>::set_bufferSize(std::size_t bs)
 {
     std::lock_guard<std::mutex> blk(mutBuffer_);
     if(bs < bufferSize_)
@@ -120,13 +119,13 @@ void ms_logger<LOGLEVEL>::set_bufferSize(std::size_t bs)
     memcpy(tmp,buffer_,bufferSize_);
     delete buffer_;
     buffer_ = (char*)malloc(bs);
-    ms_logger<LOGLEVEL>::get_instance().setp(buffer_,buffer_+bs);
+    MsLogger<LOGLEVEL>::get_instance().setp(buffer_,buffer_+bs);
     memcpy(buffer_,tmp,bufferSize_);
     bufferSize_ = bs;
 }
 
 template<LEVELS LOGLEVEL>
-void ms_logger<LOGLEVEL>::generate_filename()
+void MsLogger<LOGLEVEL>::generate_filename()
 {
     switch (LOGLEVEL)
     {
@@ -149,18 +148,20 @@ void ms_logger<LOGLEVEL>::generate_filename()
         filepath_ = std::move(generate_date()+(fileindex_>9?"_":"_0") + std::to_string(fileindex_) + ".log");
         break;
     }
+    std::cout << "GENERATED FILEPATH " << filepath_ << std::endl;
 }
 
 template <LEVELS LOGLEVEL>
-ms_logger<LOGLEVEL>::ms_logger() 
+MsLogger<LOGLEVEL>::MsLogger() 
 {
     buffer_ = (char*)malloc(bufferSize_);
     printf("Constructing %p (%ld,%d)\n",this,bufferSize_,LOGLEVEL);
+    generate_filename();
     setp(buffer_,buffer_+bufferSize_);
 }
 
 template <LEVELS LOGLEVEL>
-ms_logger<LOGLEVEL>::~ms_logger()
+MsLogger<LOGLEVEL>::~MsLogger()
 {
     printf("Deleting %p (%ld,%d)\n",this,bufferSize_,LOGLEVEL);
     std::lock_guard<std::mutex> blk(mutBuffer_);
@@ -173,7 +174,7 @@ ms_logger<LOGLEVEL>::~ms_logger()
 }
 
 template <LEVELS LOGLEVEL>
-void ms_logger<LOGLEVEL>::log_to_stdout(std::string msg, LEVELS l)
+void MsLogger<LOGLEVEL>::log_to_stdout(std::string msg, LEVELS l)
 {
     std::lock_guard<std::mutex>lk(mutCout_);
     std::string tmp(colored.at(l) + generate_timestamp() + std::move(msg) + "\n");
@@ -181,7 +182,7 @@ void ms_logger<LOGLEVEL>::log_to_stdout(std::string msg, LEVELS l)
 }
 
 template <LEVELS LOGLEVEL>
-void ms_logger<LOGLEVEL>::log_to_file(std::string msg, LEVELS l)
+void MsLogger<LOGLEVEL>::log_to_file(std::string msg, LEVELS l)
 {
     std::lock_guard<std::mutex> blk(mutBuffer_);
     std::string tmp(uncolored.at(l) + generate_timestamp() + std::move(msg) + "\n");
@@ -190,7 +191,7 @@ void ms_logger<LOGLEVEL>::log_to_file(std::string msg, LEVELS l)
 
 
 template <LEVELS LOGLEVEL>
-std::streamsize ms_logger<LOGLEVEL>::xsputn(const std::streambuf::char_type* __s, std::streamsize __n)
+std::streamsize MsLogger<LOGLEVEL>::xsputn(const std::streambuf::char_type* __s, std::streamsize __n)
 {
     if(epptr() - pptr() >= __n)
     {
@@ -207,7 +208,7 @@ std::streamsize ms_logger<LOGLEVEL>::xsputn(const std::streambuf::char_type* __s
 }
 
 template <LEVELS LOGLEVEL>
-std::streambuf::int_type ms_logger<LOGLEVEL>::overflow(std::streambuf::int_type __ch)
+std::streambuf::int_type MsLogger<LOGLEVEL>::overflow(std::streambuf::int_type __ch)
 {
     sync(); // flush the buffer
     if(traits_type::eq_int_type(__ch,traits_type::eof()))
@@ -218,7 +219,7 @@ std::streambuf::int_type ms_logger<LOGLEVEL>::overflow(std::streambuf::int_type 
 }
 
 template <LEVELS LOGLEVEL>
-int ms_logger<LOGLEVEL>::sync()
+int MsLogger<LOGLEVEL>::sync()
 {
     write_to_file();
     memset(pbase(),0,epptr()-pbase()); // reset the buffer_
@@ -227,15 +228,13 @@ int ms_logger<LOGLEVEL>::sync()
 }
 
 template <LEVELS LOGLEVEL>
-void ms_logger<LOGLEVEL>::write_to_file()
+void MsLogger<LOGLEVEL>::write_to_file()
 {
     std::lock_guard<std::mutex> flk(mutFile_);
-    if(filepath_.empty())
-        generate_filename();
 
     while(std::filesystem::exists(filepath_))
     {
-        if(std::filesystem::file_size(filepath_) >= DEFAULT_LOGROTATE_SIZE)
+        if(std::filesystem::file_size(filepath_) > DEFAULT_LOGROTATE_SIZE)
         {
             fileindex_++;
             generate_filename();
@@ -255,7 +254,7 @@ void ms_logger<LOGLEVEL>::write_to_file()
     log_to_stdout("CURRENT FILEPATH = " + filepath_ ,ERROR);
     log_to_stdout("FILESIZE = " + std::to_string(std::filesystem::file_size(filepath_)),ERROR);
     log_to_stdout("BUFSIZE = " + std::to_string(pptr()-pbase()),ERROR);
-    if(std::filesystem::file_size(filepath_) >= DEFAULT_LOGROTATE_SIZE)
+    if(std::filesystem::file_size(filepath_) > DEFAULT_LOGROTATE_SIZE)
     {
         log_to_stdout(filepath_ + "CREATING NEW FILE = " + std::to_string(fileindex_),ERROR);
         file_.close();
@@ -278,7 +277,12 @@ void ms_logger<LOGLEVEL>::write_to_file()
         log_to_stdout("FAILBIT " + std::to_string(file_.failbit),WARN);
     if(file_.eof()) 
         log_to_stdout("EOFBIT " + std::to_string(file_.eofbit),INFO);
-
 }
 
-#endif // MS_LOGGER_HPP
+static void basic_log(std::string msg, LEVELS l=INFO)
+{
+    // MsLogger<INFO>::get_instance().log_to_file(msg,l);
+    MsLogger<INFO>::get_instance().log_to_stdout(msg,l);
+}
+
+#endif // MsLogger_H
