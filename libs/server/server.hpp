@@ -30,13 +30,14 @@ void do_accept()
             if (!ec)
             {
                 basic_log("making shared connection",DEBUG);
-                std::make_shared<Session<XmlParser>>(std::move(socket))->start();
+                std::make_shared<Session<XmlParser>>(std::move(socket),&xmlparser_)->start();
             }
 
             do_accept();
         });
 }
 boost::asio::ip::tcp::acceptor acceptor_;
+XmlParser xmlparser_;
 
 };
 #endif // SERVER_HPP

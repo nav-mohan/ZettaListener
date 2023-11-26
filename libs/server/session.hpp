@@ -11,8 +11,8 @@ class Session : public std::enable_shared_from_this<Session<XmlParser>>
 enum {MAX_BUFFER = 4096};
 private:
     boost::asio::ip::tcp::socket socket_;
-    XmlParser xmlparser_;
     char data_[MAX_BUFFER];
+    XmlParser* xmlparser_;
 
 void do_read()
 {
@@ -24,8 +24,12 @@ void do_read()
                             {
                                 if (!ec)
                                 {
-                                    xmlparser_.appendData(std::move(data_));
-                                    // do_write(length);
+                                    xmlparser_->appendData(std::string(data_));
+                                    do_read();
+                                }
+                                else 
+                                {
+                                    basic_log(std::string("ERROR READING " + ec.what()));
                                 }
                             });
 }
