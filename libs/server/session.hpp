@@ -5,43 +5,29 @@
 #include <string>
 #include "ms_logger.hpp"
 
-#define MAX_BUFFER_LEN 1024
-
 template<class XmlParser>
 class Session : public std::enable_shared_from_this<Session<XmlParser>>
 {
+enum {MAX_BUFFER = 4096};
 private:
     boost::asio::ip::tcp::socket socket_;
-    std::string data_;
     XmlParser xmlparser_;
+    char data_[MAX_BUFFER];
 
 void do_read()
 {
+    memset(data_,0,MAX_BUFFER);
     auto self(this->shared_from_this());
     basic_log("Sesison::do_read " + std::to_string(self.use_count()));
-    socket_.async_read_some(boost::asio::buffer(data_),
+    socket_.async_read_some(boost::asio::buffer(data_,MAX_BUFFER),
                             [this, self](boost::system::error_code ec, std::size_t length)
                             {
-                                basic_log("READ LENGTH " + std::to_string(length));
                                 if (!ec)
                                 {
                                     xmlparser_.appendData(std::move(data_));
                                     // do_write(length);
                                 }
                             });
-}
-
-void do_write(std::size_t length)
-{
-    // auto self(this->shared_from_this());
-    // boost::asio::async_write(socket_, boost::asio::buffer(data_, length),
-    //                             [this, self](boost::system::error_code ec, std::size_t len)
-    //                             {
-    //                                 if (!ec)
-    //                                 {
-    //                                     do_read();
-    //                                 }
-    //                             });
 }
 
 public:
