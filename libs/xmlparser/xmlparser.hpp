@@ -89,6 +89,9 @@ public:
     bool isLiveTask(const boost::property_tree::ptree& logEvent);
     void parseLiveTask(const boost::property_tree::ptree& logEvent);
 
+    bool isAsset(const boost::property_tree::ptree& logEvent);
+    void parseAsset(const boost::property_tree::ptree& logEvent);
+
     bool isWeirdAsset(const boost::property_tree::ptree& logEvent);
     void parseWeirdAsset(const boost::property_tree::ptree& logEvent);
 

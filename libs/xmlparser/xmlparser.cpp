@@ -1,4 +1,5 @@
 #include "xmlparser.hpp"
+
 ZettaFullXmlParser::ZettaFullXmlParser() 
     : regexPattern_(REGEX_PATTERN), 
     workerThread_(&ZettaFullXmlParser::Handler, this) 
@@ -83,6 +84,11 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
             basic_log("LIVE XML!",DEBUG);
             parseLiveTask(logEvent);
         }
+        else if(isAsset(logEvent))
+        {
+            basic_log("ASSET XML!",DEBUG);
+            parseAsset(logEvent);
+        }
         else if (isWeirdAsset(logEvent))
         {
             basic_log("WEIRD ASSET XML!",DEBUG);
@@ -91,7 +97,8 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
         else 
         {
             basic_log("UNKNONW!",ERROR);
-                    }
+            // basic_log(ss.str(),ERROR);
+        }
         printResult();
     }
 }
@@ -102,6 +109,15 @@ bool ZettaFullXmlParser::isLiveTask(const boost::property_tree::ptree& logEvent)
     boost::optional<const boost::property_tree::ptree&> optTask = logEvent.get_child_optional("Task");
     if(optTask) return 1;
     else return 0;
+}
+
+// check if there is a "LastStarted" attribute within <LogEvent> tag.
+bool ZettaFullXmlParser::isAsset(const boost::property_tree::ptree& logEvent)
+{
+    boost::optional<std::string> optLastStarted = logEvent.get_optional<std::string>("<xmlattr>.LastStarted");
+    if(!optLastStarted) return 0;
+    if(optLastStarted.get() != "true") return 0;
+    return 1;
 }
 
 // WeirdAsset is the individual song metadata that Steve Kopp uses during his show
@@ -156,6 +172,55 @@ void ZettaFullXmlParser::parseLiveTask(const boost::property_tree::ptree& logEve
         result_["Title"]    = comment.substr(titleStartIndex, titleEndIndex-titleStartIndex);
         result_["Artist"]   = comment.substr(artistStartIndex, artistEndIndex-artistStartIndex);
         result_["ShowType"] = comment.substr(composerStartIndex, composerEndIndex-composerStartIndex);
+    }
+}
+
+
+void ZettaFullXmlParser::parseAsset(const boost::property_tree::ptree& logEvent)
+{
+    result_["LogType"] = "Prerec Asset";
+    const boost::property_tree::ptree& asset = logEvent.get_child("AssetEvent.Asset");
+
+// these are guaranteed to exist
+{
+    result_["AssetID"]      = asset.get<std::string>("<xmlattr>.AssetID");
+    result_["AssetType"]    = asset.get<std::string>("<xmlattr>.AssetTypeName");
+    result_["Title"]        = asset.get<std::string>("<xmlattr>.Title");
+
+    const boost::property_tree::ptree& resource = asset.get_child("Resource");
+
+    result_["AssetFilePath"] = resource.get<std::string>("<xmlattr>.ResourceFile");
+    result_["AssetDuration"] = resource.get<std::string>("<xmlattr>.Length");
+}
+
+// these are not guaranteed to exist
+    for(const auto& [key,value] : asset)
+    {
+        if(key == "Artist")
+            result_["Artist"] = value.get<std::string>("<xmlattr>.Name");
+        else if (key == "Album")
+            result_["Album"] = value.get<std::string>("<xmlattr>.Name");
+        else if (key == "Product")
+            result_["AssetProduct"] = value.get<std::string>("<xmlattr>.Name");
+        else if (key == "Sponsor")
+            result_["AssetSponsor"] = value.get<std::string>("<xmlattr>.Name");
+        else if (key == "AssetAttribute")
+        {
+            const std::string assetAttributeTypeName = value.get<std::string>("<xmlattr>.AttributeTypeName");
+            const std::string assetAttributeValueName = value.get<std::string>("<xmlattr>.AttributeValueName");
+            if(assetAttributeTypeName == "Genre")
+                result_["RWGenre"] = assetAttributeValueName;
+            else if (assetAttributeTypeName == "RW Release Date")
+                result_["RWReleaseDate"] = assetAttributeValueName;
+            else if (assetAttributeTypeName == "Local")
+                result_["RWLocal"] = assetAttributeValueName;
+            else if (assetAttributeTypeName == "Cancon")
+                result_["RWCanCon"] = assetAttributeValueName;
+            else if (assetAttributeTypeName == "Hit")
+                result_["RWHit"] = assetAttributeValueName;
+            else if (assetAttributeTypeName == "Explicit")
+                result_["RWExplicit"] = assetAttributeValueName;
+        }
     }
 }
 
