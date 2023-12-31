@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <queue>
+#include <vector>
 
 #include <boost/regex.hpp> // boost::regex is a better library than std::regex, especially for multiline
 #include <boost/property_tree/ptree.hpp>
@@ -34,7 +35,7 @@ private:
     boost::property_tree::ptree ptree_;
 
 public:
-    void appendData(std::string &&data); // to push strings into buffer_/queue_
+    void appendData(std::vector<char> &data, std::size_t dataSize); // to push strings into buffer_/queue_
     void parseXml(std::string &&xmlstring);
     ZettaFullXmlParser();
     void Handler(); // 

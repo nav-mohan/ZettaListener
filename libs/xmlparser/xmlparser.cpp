@@ -41,26 +41,20 @@ void ZettaFullXmlParser::Handler()
     
 }
 
-void ZettaFullXmlParser::appendData(std::string&& data)
+void ZettaFullXmlParser::appendData(std::vector<char>& data, std::size_t dataSize)
 {
-    std::string newdata(std::move(data));
-    buffer_.insert(buffer_.end(), newdata.begin(), newdata.begin() + newdata.size());
+    buffer_.insert(buffer_.end(), data.begin(), data.begin() + dataSize);
+
     boost::sregex_iterator iter(buffer_.begin(), buffer_.end(), regexPattern_);
     boost::sregex_iterator end;
-    ptrdiff_t prevLen = 0;
-    ptrdiff_t prevPos = 0;
-    ptrdiff_t currPos = 0;
     while(iter != end)
     {
-        currPos = iter->position() - prevPos - prevLen;
         {
             std::lock_guard<std::mutex> lock(mut_);
-            queue_.emplace(buffer_.substr(currPos,iter->length()));
+            queue_.emplace(buffer_.substr(iter->position(),iter->length()));
         }
-        buffer_.erase(currPos, iter->length());
+        buffer_.erase(0, iter->position() + iter->length());
         boost::algorithm::trim(buffer_);
-        prevLen = iter->length();
-        prevPos = iter->position();
         iter++;
         cond_.notify_one();
     }
