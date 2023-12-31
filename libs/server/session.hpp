@@ -8,7 +8,7 @@
 template<class XmlParser>
 class Session : public std::enable_shared_from_this<Session<XmlParser>>
 {
-enum {MAX_BUFFER = 4096};
+enum {MAX_BUFFER = 1024 };//keep this below size of 1 complete XML because REGEX cannot capture multiple XMLs
 private:
     boost::asio::ip::tcp::socket socket_;
     char data_[MAX_BUFFER];
