@@ -30,7 +30,7 @@ void do_accept()
             if (!ec)
             {
                 basic_log("making shared connection",DEBUG);
-                std::make_shared<Session<XmlParser>>(std::move(socket),&xmlparser_)->start();
+                std::make_shared<Session<XmlParser>>(std::move(socket),xmlparser_)->start();
             }
 
             do_accept();

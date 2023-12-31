@@ -12,7 +12,7 @@ enum {MAX_BUFFER = 4096};
 private:
     boost::asio::ip::tcp::socket socket_;
     char data_[MAX_BUFFER];
-    XmlParser* xmlparser_;
+    XmlParser& xmlparser_;
 
 void do_read()
 {
@@ -24,7 +24,7 @@ void do_read()
                             {
                                 if (!ec)
                                 {
-                                    xmlparser_->appendData(std::string(data_));
+                                    xmlparser_.appendData(std::string(data_));
                                     do_read();
                                 }
                                 else 
@@ -35,7 +35,9 @@ void do_read()
 }
 
 public:
-Session(boost::asio::ip::tcp::socket socket) : socket_(std::move(socket))
+Session(boost::asio::ip::tcp::socket socket, XmlParser& xp)
+: socket_(std::move(socket))
+, xmlparser_(xp)
 {
     basic_log("Sesison::Session",DEBUG);
 }
