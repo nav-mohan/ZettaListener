@@ -83,7 +83,12 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
             basic_log("LIVE XML!",DEBUG);
             parseLiveTask(logEvent);
         }
-                else 
+        else if (isWeirdAsset(logEvent))
+        {
+            basic_log("WEIRD ASSET XML!",DEBUG);
+            parseWeirdAsset(logEvent);
+        }
+        else 
         {
             basic_log("UNKNONW!",ERROR);
                     }
@@ -99,9 +104,19 @@ bool ZettaFullXmlParser::isLiveTask(const boost::property_tree::ptree& logEvent)
     else return 0;
 }
 
-}
-
+// WeirdAsset is the individual song metadata that Steve Kopp uses during his show
+// LogEventID==0, AirStopTimeLocal does not exist, and <LogEvent.Asset> exists
+bool ZettaFullXmlParser::isWeirdAsset(const boost::property_tree::ptree& logEvent)
 {
+    const std::string logEventID = logEvent.get<std::string>("<xmlattr>.LogEventID");
+    if(logEventID != "0") return 0;
+
+    boost::optional<std::string> optAirStopTime = logEvent.get_optional<std::string>("<xmlattr>.AirStoptimeLocal");
+    if(optAirStopTime) return 0;
+
+    boost::optional<const boost::property_tree::ptree&> optAsset = logEvent.get_child_optional("AssetEvent");
+    if(!optAsset) return 0;
+
     return 1;
 }
 
@@ -142,6 +157,25 @@ void ZettaFullXmlParser::parseLiveTask(const boost::property_tree::ptree& logEve
         result_["Artist"]   = comment.substr(artistStartIndex, artistEndIndex-artistStartIndex);
         result_["ShowType"] = comment.substr(composerStartIndex, composerEndIndex-composerStartIndex);
     }
+}
+
+void ZettaFullXmlParser::parseWeirdAsset(const boost::property_tree::ptree& logEvent)
+{
+    result_["LogType"] = "Weird Asset";
+
+    const boost::property_tree::ptree& asset = logEvent.get_child("AssetEvent.Asset");
+
+    result_["Title"] = asset.get<std::string>("<xmlattr>.Title");
+
+    boost::optional<const boost::property_tree::ptree&> optionalArtist = asset.get_child_optional("Artist");
+    boost::optional<const boost::property_tree::ptree&> optionalParticipant = asset.get_child_optional("Participant");
+
+    if(optionalArtist)
+        result_["Artist"] = optionalArtist.get().get<std::string>("<xmlattr>.Name");
+
+    if(optionalParticipant)
+        result_["Show Type"] = optionalParticipant.get().get<std::string>("<xmlattr>.Name");
+
 }
 
 // this populates the LogEventID, AirDate, AirStartTime, AirStopTime

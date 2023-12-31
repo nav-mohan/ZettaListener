@@ -21,7 +21,10 @@
 
 #include "ms_logger.hpp"
 
-#define REGEX_PATTERN "<\\?xml\\s.*?<\\/ZettaClipboard>"
+// this REGEX_PATTERN cannot handle multiple <?xml..</ZettaClipboard>
+// the workaround is to limit the Socket's buffer size
+// #define REGEX_PATTERN "<\\?xml\\s.*?<\\/ZettaClipboard>"
+#define REGEX_PATTERN "<ZettaClipboard\\s.*?<\\/ZettaClipboard>"
 
 const std::unordered_map<std::string,std::string> 
 DEFAULT_RESULT = {
@@ -85,6 +88,9 @@ public:
 
     bool isLiveTask(const boost::property_tree::ptree& logEvent);
     void parseLiveTask(const boost::property_tree::ptree& logEvent);
+
+    bool isWeirdAsset(const boost::property_tree::ptree& logEvent);
+    void parseWeirdAsset(const boost::property_tree::ptree& logEvent);
 
     void parseDefaults(const boost::property_tree::ptree& logEvent);
 };
