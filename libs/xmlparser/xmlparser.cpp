@@ -75,16 +75,70 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
     boost::property_tree::ptree& logEvents = ptree_.get_child("ZettaClipboard.LogEvents");
     for(const auto& [key,logEvent] : logEvents)
     {
-        if(key == "LogEvent")
-            if(isLiveXml(logEvent))
-                basic_log("LIVE XML!",INFO);
+        if(key != "LogEvent") continue;
+        resetResult();
+        if(isLiveTask(logEvent))
+        {
+            basic_log("LIVE XML!",DEBUG);
+            parseLiveTask(logEvent);
+        }
+        else 
+        {
+            basic_log("UNKNONW!",ERROR);
+        }
+        printResult();
     }
+}
+
+// check if there is a <Task> tag within <LogEvent> tag. The <Task> tag contains attributes such as [Show-Name, Show-Host, Show-Type], or [Sequencer-Mode]
+bool ZettaFullXmlParser::isLiveTask(const boost::property_tree::ptree& logEvent)
+{
+    boost::optional<const boost::property_tree::ptree&> optTask = logEvent.get_child_optional("Task");
+    if(optTask) return 1;
+    else return 0;
+}
 
 }
 
-bool ZettaFullXmlParser::isLiveXml(const boost::property_tree::ptree& logEvent)
 {
-    std::string logEventID = logEvent.get<std::string>("<xmlattr>.LogEventID");
-    basic_log(logEventID,ERROR);
     return 1;
+}
+
+// parse LiveTask should return Show Name, Show Host, and Show Type(Live Music or Live Talk)
+// or it should return what type of Sequencer.SetMode Auto, LiveAssist, Manual, etc.
+// so it should return LogType, ShowHost, ShowName, ShowType
+void ZettaFullXmlParser::parseLiveTask(const boost::property_tree::ptree& logEvent)
+{
+    const boost::property_tree::ptree& task = logEvent.get_child("Task");
+    std::string comment = task.get<std::string>("<xmlattr>.Comment");
+
+    // this means it's a Sequencer.SetMode
+    if(task.get_optional<std::string>("<xmlattr>.ParamA"))
+    {
+        result_["LogType"] = "Sequencer SetMode";
+        // now find the "Mode" within the Comment - LiveAssist, Manual, or Auto
+        std::size_t modeStartIndex = comment.find("Mode: ") + 6;
+        std::size_t modeEndIndex = comment.find(" ]");
+        result_["ShowType"] = comment.substr(modeStartIndex,modeEndIndex-modeStartIndex);
+    }
+
+    // this means it's a Live Show
+    else if(task.get_optional<std::string>("<xmlattr>.ParamB"))
+    {
+        result_["LogType"] = "Live Show";
+        // now find the Artist, Title, Composer within the Comment
+        // its arranged like "Title: History of Us, Artist: Steve Kopp, Composer: Live Music Show ]"
+        const std::size_t titleStartIndex = comment.find("Title: ") + 7;
+        const std::size_t titleEndIndex = comment.find(", Artist: ");
+        
+        const std::size_t artistStartIndex = titleEndIndex + 10;
+        const std::size_t artistEndIndex = comment.find(", Composer: ");
+        
+        const std::size_t composerStartIndex = artistEndIndex + 12;
+        const std::size_t composerEndIndex = comment.find(" ]");
+
+        result_["Title"]    = comment.substr(titleStartIndex, titleEndIndex-titleStartIndex);
+        result_["Artist"]   = comment.substr(artistStartIndex, artistEndIndex-artistStartIndex);
+        result_["ShowType"] = comment.substr(composerStartIndex, composerEndIndex-composerStartIndex);
+    }
 }

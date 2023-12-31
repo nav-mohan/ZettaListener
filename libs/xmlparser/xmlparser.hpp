@@ -17,6 +17,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/optional.hpp>
 
 #include "ms_logger.hpp"
 
@@ -82,7 +83,8 @@ public:
     void Handler(); // 
     ~ZettaFullXmlParser();
 
-    bool isLiveXml(const boost::property_tree::ptree& logEvent);
+    bool isLiveTask(const boost::property_tree::ptree& logEvent);
+    void parseLiveTask(const boost::property_tree::ptree& logEvent);
 
 };
 
