@@ -86,6 +86,7 @@ public:
     bool isLiveTask(const boost::property_tree::ptree& logEvent);
     void parseLiveTask(const boost::property_tree::ptree& logEvent);
 
+    void parseDefaults(const boost::property_tree::ptree& logEvent);
 };
 
 #endif // XMLPARSER_HPP

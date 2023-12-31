@@ -77,15 +77,16 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
     {
         if(key != "LogEvent") continue;
         resetResult();
+        parseDefaults(logEvent);
         if(isLiveTask(logEvent))
         {
             basic_log("LIVE XML!",DEBUG);
             parseLiveTask(logEvent);
         }
-        else 
+                else 
         {
             basic_log("UNKNONW!",ERROR);
-        }
+                    }
         printResult();
     }
 }
@@ -141,4 +142,21 @@ void ZettaFullXmlParser::parseLiveTask(const boost::property_tree::ptree& logEve
         result_["Artist"]   = comment.substr(artistStartIndex, artistEndIndex-artistStartIndex);
         result_["ShowType"] = comment.substr(composerStartIndex, composerEndIndex-composerStartIndex);
     }
+}
+
+// this populates the LogEventID, AirDate, AirStartTime, AirStopTime
+void ZettaFullXmlParser::parseDefaults(const boost::property_tree::ptree& logEvent)
+{
+
+    result_["LogEventID"] = logEvent.get<std::string>("<xmlattr>.LogEventID");
+    result_["AirStartTime"] = logEvent.get<std::string>("<xmlattr>.AirStarttimeLocal");
+
+    const boost::optional<std::string> airStopTimeLocal = logEvent.get_optional<std::string>("<xmlattr>.AirStoptimeLocal");
+    if(airStopTimeLocal)
+        result_["AirStopTime"] = std::move(airStopTimeLocal.get());
+    else
+        result_["AirStopTime"] = result_["AirStopTime"];
+
+    const std::size_t airDateEndIndex = result_["AirStartTime"].find(" ");
+    result_["AirDate"] = result_["AirStartTime"].substr(0,airDateEndIndex);
 }
