@@ -1,8 +1,9 @@
 #include "xmlparser.hpp"
 
-ZettaFullXmlParser::ZettaFullXmlParser() 
+ZettaFullXmlParser::ZettaFullXmlParser(std::function<void(std::unordered_map<std::string,std::string>)> wtd) 
     : regexPattern_(REGEX_PATTERN), 
-    workerThread_(&ZettaFullXmlParser::Handler, this) 
+    workerThread_(&ZettaFullXmlParser::Handler, this),
+    writeToDatabase(wtd)
     {
         basic_log("ZettaFullXmlParser::ZettaFullXmlParser()",DEBUG);
     };
@@ -23,17 +24,18 @@ void ZettaFullXmlParser::Handler()
 
     do
     {
-        basic_log("ZettaFullXmlParser::Handler waiting...");
+        // basic_log("ZettaFullXmlParser::Handler waiting...");
         cond_.wait(lock, [this](){
             return (busy_.load()==0 && (queue_.size()||quit_.load()));
         });
         if(queue_.size() && quit_.load()==0 && busy_.load()==0)
         {
-            basic_log("ZettaFullXmlParser::Handler LETS GO!!!");
+            // basic_log("ZettaFullXmlParser::Handler LETS GO!!!");
             std::string xmlstring = std::move(queue_.front());
             queue_.pop();
             busy_.store(1);
             lock.unlock();                  // socket is free to call ZettaFullXmlParser::appendData
+            // basic_log("\n"+xmlstring.substr(0,100),DEBUG);
             parseXml(std::move(xmlstring)); // blocking call. 
             lock.lock();
             busy_.store(0);
@@ -48,16 +50,23 @@ void ZettaFullXmlParser::appendData(std::vector<char>& data, std::size_t dataSiz
 
     boost::sregex_iterator iter(buffer_.begin(), buffer_.end(), regexPattern_);
     boost::sregex_iterator end;
+    long long totalLen = 0; // the total length of buffer to be erased at the end
     while(iter != end)
     {
         {
             std::lock_guard<std::mutex> lock(mut_);
             queue_.emplace(buffer_.substr(iter->position(),iter->length()));
         }
-        buffer_.erase(0, iter->position() + iter->length());
-        boost::algorithm::trim(buffer_);
+        totalLen += iter->length();
+        // basic_log("TOTALLEN " + std::to_string(totalLen),DEBUG);
         iter++;
         cond_.notify_one();
+    }
+    if(totalLen)
+    {
+        // basic_log("ERASING " + std::to_string(totalLen),DEBUG);
+        buffer_.erase(0,totalLen);
+        boost::algorithm::trim(buffer_);
     }
 }
 
@@ -70,7 +79,7 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
     }
     catch(const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+        // basic_log(e.what(),ERROR);
         return;
     }
     boost::property_tree::ptree& logEvents = ptree_.get_child("ZettaClipboard.LogEvents");
@@ -81,25 +90,27 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
         parseDefaults(logEvent);
         if(isLiveTask(logEvent))
         {
-            basic_log("LIVE XML!",DEBUG);
+            // basic_log("LIVE XML!",DEBUG);
             parseLiveTask(logEvent);
         }
         else if(isAsset(logEvent))
         {
-            basic_log("ASSET XML!",DEBUG);
+            // basic_log("ASSET XML!",DEBUG);
             parseAsset(logEvent);
         }
         else if (isWeirdAsset(logEvent))
         {
-            basic_log("WEIRD ASSET XML!",DEBUG);
+            // basic_log("WEIRD ASSET XML!",DEBUG);
             parseWeirdAsset(logEvent);
         }
         else 
         {
             basic_log("UNKNONW!",ERROR);
             // basic_log(ss.str(),ERROR);
+            continue;
         }
-        printResult();
+        // printResult();
+        writeToDatabase(result_);
     }
 }
 
@@ -121,13 +132,13 @@ bool ZettaFullXmlParser::isAsset(const boost::property_tree::ptree& logEvent)
 }
 
 // WeirdAsset is the individual song metadata that Steve Kopp uses during his show
-// LogEventID==0, AirStopTimeLocal does not exist, and <LogEvent.Asset> exists
+// LogEventID==0, AirStopTime does not exist, and <LogEvent.Asset> exists
 bool ZettaFullXmlParser::isWeirdAsset(const boost::property_tree::ptree& logEvent)
 {
     const std::string logEventID = logEvent.get<std::string>("<xmlattr>.LogEventID");
     if(logEventID != "0") return 0;
 
-    boost::optional<std::string> optAirStopTime = logEvent.get_optional<std::string>("<xmlattr>.AirStoptimeLocal");
+    boost::optional<std::string> optAirStopTime = logEvent.get_optional<std::string>("<xmlattr>.AirStoptime");
     if(optAirStopTime) return 0;
 
     boost::optional<const boost::property_tree::ptree&> optAsset = logEvent.get_child_optional("AssetEvent");
@@ -248,14 +259,14 @@ void ZettaFullXmlParser::parseDefaults(const boost::property_tree::ptree& logEve
 {
 
     result_["LogEventID"] = logEvent.get<std::string>("<xmlattr>.LogEventID");
-    result_["AirStartTime"] = logEvent.get<std::string>("<xmlattr>.AirStarttimeLocal");
+    result_["AirStartTime"] = logEvent.get<std::string>("<xmlattr>.AirStarttime");
 
-    const boost::optional<std::string> airStopTimeLocal = logEvent.get_optional<std::string>("<xmlattr>.AirStoptimeLocal");
-    if(airStopTimeLocal)
-        result_["AirStopTime"] = std::move(airStopTimeLocal.get());
+    const boost::optional<std::string> airStopTime = logEvent.get_optional<std::string>("<xmlattr>.AirStoptime");
+    if(airStopTime)
+        result_["AirStopTime"] = std::move(airStopTime.get());
     else
-        result_["AirStopTime"] = result_["AirStopTime"];
+        result_["AirStopTime"] = result_["AirStartTime"];
 
-    const std::size_t airDateEndIndex = result_["AirStartTime"].find(" ");
+    const std::size_t airDateEndIndex = result_["AirStartTime"].find("T");
     result_["AirDate"] = result_["AirStartTime"].substr(0,airDateEndIndex);
 }

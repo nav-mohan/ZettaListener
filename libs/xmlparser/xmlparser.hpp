@@ -12,6 +12,7 @@
 #include <queue>
 #include <vector>
 #include <unordered_map>
+#include <functional>
 
 #include <boost/regex.hpp> // boost::regex is a better library than std::regex, especially for multiline
 #include <boost/property_tree/ptree.hpp>
@@ -50,11 +51,11 @@ DEFAULT_RESULT = {
 
 // Custom Attributes
     {"RWReleaseDate",     ""},
+    {"RWGenre",           ""},
     {"RWLocal",           ""},
     {"RWCanCon",          ""},
     {"RWHit",             ""},
-    {"RWExplicit",        ""},
-    {"RWGenre",        ""}
+    {"RWExplicit",        ""}
 };
 
 struct ZettaFullXmlParser
@@ -78,11 +79,12 @@ private:
             serializedOutput += key + "--->" + value + "|\n";
         basic_log(serializedOutput,DEBUG);
     }
+    std::function<void(std::unordered_map<std::string,std::string>)> writeToDatabase;
 
 public:
     void appendData(std::vector<char> &data, std::size_t dataSize); // to push strings into buffer_/queue_
     void parseXml(std::string &&xmlstring);
-    ZettaFullXmlParser();
+    ZettaFullXmlParser(std::function<void(std::unordered_map<std::string,std::string>)> writeToDatabase);
     void Handler(); // 
     ~ZettaFullXmlParser();
 
@@ -96,6 +98,7 @@ public:
     void parseWeirdAsset(const boost::property_tree::ptree& logEvent);
 
     void parseDefaults(const boost::property_tree::ptree& logEvent);
+
 };
 
 #endif // XMLPARSER_HPP
