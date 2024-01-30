@@ -4,20 +4,26 @@
 #include <cstdlib>
 #include <iostream>
 #include <utility>
+#include <functional>
 
 #include <boost/asio.hpp>
 
-#include "session.hpp"
+#include "tcpsession.hpp"
 #include "ms_logger.hpp"
 
 template <class XmlParser>
-class Server
+class TCPServer
 {
 public:
-Server(boost::asio::io_context &io_context, short port)
+TCPServer(
+    boost::asio::io_context &io_context, 
+    short port, 
+    std::function<void(std::unordered_map<std::string,std::string>)> writeToDatabase
+    )
     : acceptor_(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port))
+    , xmlparser_(writeToDatabase)
 {
-    basic_log("Server::Server",DEBUG);
+    basic_log("TCPServer::TCPServer",DEBUG);
     do_accept();
 }
 
@@ -29,8 +35,8 @@ void do_accept()
         {
             if (!ec)
             {
-                basic_log("making shared connection",DEBUG);
-                std::make_shared<Session<XmlParser>>(std::move(socket),xmlparser_)->start();
+                // basic_log("making shared connection",DEBUG);
+                std::make_shared<TCPSession<XmlParser>>(std::move(socket),xmlparser_)->start();
             }
 
             do_accept();

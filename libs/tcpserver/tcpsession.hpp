@@ -8,7 +8,7 @@
 #include "ms_logger.hpp"
 
 template<class XmlParser>
-class Session : public std::enable_shared_from_this<Session<XmlParser>>
+class TCPSession : public std::enable_shared_from_this<TCPSession<XmlParser>>
 {
 enum {MAX_BUFFER = 1024 };//keep this below size of 1 complete XML because REGEX cannot capture multiple XMLs
 private:
@@ -19,34 +19,34 @@ private:
 void do_read()
 {
     auto self(this->shared_from_this());
-    basic_log("Sesison::do_read " + std::to_string(self.use_count()));
+    // basic_log("Sesison::do_read " + std::to_string(self.use_count()));
     socket_.async_receive(boost::asio::buffer(data_),
-                            [this, self](boost::system::error_code ec, size_t length)
+                            [self](boost::system::error_code ec, size_t length)
                             {
                                 if (!ec)
                                 {
-                                    xmlparser_.appendData(data_,length);
-                                    do_read();
+                                    self->xmlparser_.appendData(self->data_,length);
+                                    self->do_read();
                                 }
                                 else 
                                 {
-                                    basic_log(std::string("ERROR READING " + ec.what()));
+                                    // basic_log(std::string("ERROR READING " + ec.what()));
                                 }
                             });
 }
 
 public:
-Session(boost::asio::ip::tcp::socket socket, XmlParser& xp)
+TCPSession(boost::asio::ip::tcp::socket socket, XmlParser& xp)
 : socket_(std::move(socket))
 , xmlparser_(xp)
 , data_(MAX_BUFFER,0)
 {
-    basic_log("Sesison::Session",DEBUG);
+    // basic_log("TCPSession::TCPSession",DEBUG);
 }
 
-~Session()
+~TCPSession()
 {
-    basic_log("Sesison::~Session",DEBUG);
+    // basic_log("TCPSession::~TCPSession",DEBUG);
 }
 
 void start()
