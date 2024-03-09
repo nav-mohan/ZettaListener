@@ -16,3 +16,6 @@
 * `DbCon` accepts custom names for `MainTable` and `AttributeTable`.
 * `DbCon` accepts custom schema for `MainTable` and `AttributeTable`.
 * Save configurations (`ZettaFullXML/ZettaCleanXML`,`PortNumber`, `MainTableName`,`AttributeTableName`, `AutoConnect`) to a separate table `ConfigurationTable`.
+
+## ToDo
+* Fewer Log statements
