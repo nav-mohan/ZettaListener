@@ -1,4 +1,8 @@
 # ZettaListener
+`ZettaListener` is an [RCS-Zetta](https://www.rcsworks.com/zetta/) compliant metadata logger and distributor. It has two components 
+* a TCP server for receiving and parsing streaming XML data 
+* a SQLite database for data-persistence
+* a HTTP(S) server for querying and serving JSON data
 
 ## Third-Pary Libraries 
 * `Boost::ASIO`
