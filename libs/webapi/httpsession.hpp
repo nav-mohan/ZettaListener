@@ -7,6 +7,7 @@
 #include <iostream>
 #include <regex>
 #include "jsonutil.hpp"
+#include "ms_logger.hpp"
 
 // Handles an HTTP server connection
 template <class DbConnection>
@@ -25,19 +26,22 @@ public:
         DbConnection &dbcon)
         : stream_(std::move(socket)), dbcon_(dbcon)
     {
-        fprintf(stderr, "HTTPSession::HTTPSession\n");
+        // fprintf(stderr, "HTTPSession::HTTPSession\n");
+        basic_log("HTTPSession CONSTRUCTED",TRACE);
+
     }
 
     ~HTTPSession()
     {
-        fprintf(stderr, "HTTPSession::~HTTPSession\n");
+        basic_log("HTTPSession PURGED",TRACE);
+        // fprintf(stderr, "HTTPSession::~HTTPSession\n");
     }
 
     // Start the asynchronous operation
     void run()
     {
         auto self(this->shared_from_this());
-        fprintf(stderr, "HTTPSession::run\n");
+        // fprintf(stderr, "HTTPSession::run\n");
         boost::asio::dispatch(stream_.get_executor(), [self]()
                               { self->do_read(); });
     }
@@ -50,6 +54,7 @@ private:
         boost::beast::string_view why
     )
     {
+        basic_log("HTTPSession BAD-REQUEST",INFO);
         boost::beast::http::response<boost::beast::http::string_body> res{boost::beast::http::status::bad_request, req.version()};
         res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(boost::beast::http::field::content_type, "text/html");
@@ -66,6 +71,7 @@ private:
         boost::beast::string_view target
     )
     {
+        basic_log("HTTPSession NOT-FOUND",INFO);
         boost::beast::http::response<boost::beast::http::string_body> res{boost::beast::http::status::not_found, req.version()};
         res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(boost::beast::http::field::content_type, "text/html");
@@ -82,11 +88,12 @@ private:
         std::string resBody
     )
     {
+        basic_log("HTTPSession REQUEST OK",INFO);
         boost::beast::http::response<boost::beast::http::string_body> res{boost::beast::http::status::ok, req.version()};
         res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(boost::beast::http::field::content_type, "application/json");
         res.set(boost::beast::http::field::access_control_allow_origin, "*");
-        printf("GET RQEUEST KEEP ALIVE %d\n",req.keep_alive());
+        // printf("GET RQEUEST KEEP ALIVE %d\n",req.keep_alive());
         res.keep_alive(req.keep_alive());
         res.body() = std::move(resBody);
         res.prepare_payload();
@@ -99,6 +106,7 @@ private:
         boost::beast::string_view what
     )
     {
+        basic_log("HTTPSession SERVER ERROR",INFO);
         boost::beast::http::response<boost::beast::http::string_body> res{boost::beast::http::status::internal_server_error, req.version()};
         res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(boost::beast::http::field::content_type, "text/html");
@@ -131,7 +139,7 @@ private:
                 startTime = matchRange[1].str();
                 endTime   = matchRange[2].str();
             }
-            printf("GETTING RANGE %s -- %s\n",startTime.c_str(),endTime.c_str());
+            // printf("GETTING RANGE %s -- %s\n",startTime.c_str(),endTime.c_str());
             std::vector<std::unordered_map<std::string,std::string>> records = std::move(dbcon_.getByRange(startTime,endTime));
             std::string jsonString = toJson(std::move(records));
             return send_ok(req,std::move(jsonString));
@@ -142,7 +150,7 @@ private:
             std::string date = "0000-00-00";
             if(matchDate.size() > 1)    
                 date = matchDate[1].str();
-            printf("GETTING DATE %s\n",date.c_str());
+            // printf("GETTING DATE %s\n",date.c_str());
             std::vector<std::unordered_map<std::string,std::string>> records = std::move(dbcon_.getByDate(date));
             std::string jsonString = toJson(std::move(records));
             return send_ok(req,std::move(jsonString));
@@ -160,19 +168,19 @@ private:
         switch (req.method())
         {
         case boost::beast::http::verb::get:
-            printf("GET REQUEST %s\n",std::string(req.target()).c_str());
+            // printf("GET REQUEST %s\n",std::string(req.target()).c_str());
             return handle_get(std::move(req));
 
         case boost::beast::http::verb::put:
-            printf("PUT REQUEST\n");
+            // printf("PUT REQUEST\n");
             break;
 
         case boost::beast::http::verb::delete_:
-            printf("DELETE REQUEST\n");
+            // printf("DELETE REQUEST\n");
             break;
 
         case boost::beast::http::verb::post:
-            printf("POST REQUEST\n");
+            // printf("POST REQUEST\n");
             break;
 
         default:
@@ -183,7 +191,7 @@ private:
 
     void do_read()
     {
-        fprintf(stderr, "HTTPSession::do_read\n");
+        // fprintf(stderr, "HTTPSession::do_read\n");
 
         stream_.expires_after(std::chrono::seconds(30));
 
@@ -193,7 +201,7 @@ private:
         boost::beast::http::async_read(
             self->stream_, self->buffer_, self->req_, [self](boost::beast::error_code ec, std::size_t len)
             {
-            fprintf(stderr,"HTTPSession::async_read\n");
+            // fprintf(stderr,"HTTPSession::async_read\n");
             boost::ignore_unused(len);
 
             // This means they closed the connection
@@ -202,7 +210,8 @@ private:
 
             if (ec)
             {
-                fprintf(stderr, "FAILED TO READ: %s\n", ec.what().c_str());
+                // fprintf(stderr, "FAILED TO READ: %s\n", ec.what().c_str());
+                basic_log("FAILED TO READ: " + ec.what());
                 return;
             }
 
@@ -217,7 +226,7 @@ private:
     void send_response(boost::beast::http::message_generator &&msg)
     {
         bool keep_alive = msg.keep_alive();
-        fprintf(stderr, "SEND RESPONSE\n");
+        // fprintf(stderr, "SEND RESPONSE\n");
 
         auto self(this->shared_from_this());
         boost::beast::async_write(
@@ -228,24 +237,27 @@ private:
                 boost::ignore_unused(len);
                 if (ec)
                 {
-                    fprintf(stderr, "FAILED TO WRITE: %s\n", ec.what().c_str());
+                    // fprintf(stderr, "FAILED TO WRITE: %s\n", ec.what().c_str());
+                    basic_log("FAILED TO WRITE: " + ec.what());
                     return;
                 }
 
                 if (!keep_alive)
                 {
-                    fprintf(stderr, "CLOSING CONNECTION\n");
+                    // fprintf(stderr, "CLOSING CONNECTION\n");
+                    basic_log("CLOSING CONNECTION...");
                     return self->do_close();
                 }
 
-                fprintf(stderr, "DO ANOTHE READ\n");
+                // fprintf(stderr, "DO ANOTHE READ\n");
                 self->do_read();
             });
     }
 
     void do_close()
     {
-        fprintf(stderr, "DO CLOSE\n");
+        basic_log("HTTPSession CLOSING SESSION...",INFO);
+        // fprintf(stderr, "DO CLOSE\n");
         // Send a TCP shutdown
         boost::beast::error_code ec;
         stream_.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);

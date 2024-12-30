@@ -2,7 +2,7 @@
 
 DbCon::DbCon(sqlite3 *db) : db_(db)
 {
-    basic_log("DB CONNECTION");
+    basic_log("ESTABLISHING DATABASE CONNECTION...");
     bool retval;
     retval = createTable();
 }
@@ -42,6 +42,7 @@ bool DbCon::createTable()
     if (retval != SQLITE_OK)
     {
         fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db_));
+        basic_log("FAILED TO CREATE TABLE",ERROR);
         sqlite3_close(db_);
         return false;
     }
@@ -113,6 +114,7 @@ bool DbCon::insertRecord(std::unordered_map<std::string,std::string> record)
     retval = sqlite3_step(stmt);
     if (retval != SQLITE_DONE)
     {
+        basic_log("FAILED TO INSERT RECORD " + std::to_string(logEventID),ERROR);
         fprintf(stderr, "Execution error: %s\n", sqlite3_errmsg(db_));
         sqlite3_finalize(stmt);
         // sqlite3_close(db_);
@@ -125,6 +127,7 @@ bool DbCon::insertRecord(std::unordered_map<std::string,std::string> record)
 
 std::unordered_map<std::string, std::string> DbCon::getLatest()
 {
+    basic_log("GET LATEST",DEBUG);
     const char *sql = "SELECT * FROM ZettaLogger ORDER BY AirStartTime DESC LIMIT 1;";
     sqlite3_stmt *stmt;
     int retval;
@@ -175,6 +178,7 @@ std::unordered_map<std::string, std::string> DbCon::getLatest()
 
 std::vector<std::unordered_map<std::string,std::string>> DbCon::getByRange(std::string startTime, std::string endTime)
 {
+    basic_log("GET BY RANGE [" + startTime + "," + endTime + "]" ,DEBUG);
     // "SELECT * FROM ZettaLogger WHERE AirStartTime BETWEEN "2024-01-20T00:00:00Z" and "2024-01-21T00:00:00Z ORDER BY AirStartTime DESC;";
     const std::string query = "SELECT * FROM ZettaLogger WHERE AirStartTime BETWEEN '" + startTime + "' AND '" + endTime + "' ORDER BY AirStartTime DESC;";
     
@@ -237,6 +241,7 @@ std::vector<std::unordered_map<std::string,std::string>> DbCon::getByRange(std::
 
 std::vector<std::unordered_map<std::string,std::string>> DbCon::getByDate(std::string date)
 {
+    basic_log("GET BY DATE " + date ,DEBUG);
     const std::string query = "SELECT * FROM ZettaLogger WHERE AirDate='" + date + "' ORDER BY AirStartTime DESC;";
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(db_, query.c_str(), -1, &stmt, NULL);

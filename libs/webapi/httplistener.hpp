@@ -1,6 +1,7 @@
 #if !defined(LISTENER_HPP)
 #define LISTENER_HPP
 
+#include "ms_logger.hpp"
 #include <memory>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
@@ -55,7 +56,8 @@ public:
             fprintf(stderr, "ACCEPTOR FAILED TO LISTEN %s\n", ec.what().c_str());
             return;
         }
-        fprintf(stderr, "HTTPListener::HTTPListener\n");
+        // fprintf(stderr, "HTTPListener::HTTPListener\n");
+        basic_log("HTTPSListener CONSTRUCTED",TRACE);
     }
 
     // Start accepting incoming connections
@@ -66,12 +68,13 @@ public:
 
     void do_accept()
     {
-        fprintf(stderr, "HTTPListener::do_accept\n");
+        // fprintf(stderr, "HTTPListener::do_accept\n");
+        basic_log("HTTPSListener ACCEPTING...",TRACE);
         acceptor_.async_accept(
             boost::asio::make_strand(ioc_),
             [&](boost::beast::error_code ec, boost::asio::ip::tcp::socket sock)
             {
-                fprintf(stderr, "HTTPListener::async_accept\n");
+                // fprintf(stderr, "HTTPListener::async_accept\n");
                 if (ec)
                 {
                     fprintf(stderr, "ACCEPTOR FAILED TO ACCEP %s\n", ec.what().c_str());
@@ -82,7 +85,7 @@ public:
                     // Create the session and run it
                     auto newSess = std::make_shared<HTTPSession<DbConnection>>(std::move(sock), dbcon_);
                     newSess->run();
-                    fprintf(stderr, "MAKE SHARED SESSION\n");
+                    // fprintf(stderr, "MAKE SHARED SESSION\n");
                 }
 
                 // Accept another connection

@@ -90,22 +90,22 @@ void ZettaFullXmlParser::parseXml(std::string&& xmlstring)
         parseDefaults(logEvent);
         if(isLiveTask(logEvent))
         {
-            // basic_log("LIVE XML!",DEBUG);
+            basic_log("LIVE XML!",TRACE);
             parseLiveTask(logEvent);
         }
         else if(isAsset(logEvent))
         {
-            // basic_log("ASSET XML!",DEBUG);
+            basic_log("ASSET XML!",TRACE);
             parseAsset(logEvent);
         }
         else if (isWeirdAsset(logEvent))
         {
-            // basic_log("WEIRD ASSET XML!",DEBUG);
+            basic_log("WEIRD ASSET XML!",TRACE);
             parseWeirdAsset(logEvent);
         }
         else 
         {
-            basic_log("UNKNONW!",ERROR);
+            basic_log("UNKNOWN!",ERROR);
             // basic_log(ss.str(),ERROR);
             continue;
         }
@@ -158,6 +158,7 @@ void ZettaFullXmlParser::parseLiveTask(const boost::property_tree::ptree& logEve
     // this means it's a Sequencer.SetMode
     if(task.get_optional<std::string>("<xmlattr>.ParamA"))
     {
+        basic_log("SEQUENCER SET-MODE",INFO);
         result_["LogType"] = "Sequencer SetMode";
         // now find the "Mode" within the Comment - LiveAssist, Manual, or Auto
         std::size_t modeStartIndex = comment.find("Mode: ") + 6;
@@ -168,6 +169,7 @@ void ZettaFullXmlParser::parseLiveTask(const boost::property_tree::ptree& logEve
     // this means it's a Live Show
     else if(task.get_optional<std::string>("<xmlattr>.ParamB"))
     {
+        basic_log("LIVE SHOW",INFO);
         result_["LogType"] = "Live Show";
         // now find the Artist, Title, Composer within the Comment
         // its arranged like "Title: History of Us, Artist: Steve Kopp, Composer: Live Music Show ]"
@@ -189,6 +191,7 @@ void ZettaFullXmlParser::parseLiveTask(const boost::property_tree::ptree& logEve
 
 void ZettaFullXmlParser::parseAsset(const boost::property_tree::ptree& logEvent)
 {
+    basic_log("PRE-REC ASSET",INFO);
     result_["LogType"] = "Prerec Asset";
     const boost::property_tree::ptree& asset = logEvent.get_child("AssetEvent.Asset");
 
@@ -237,6 +240,7 @@ void ZettaFullXmlParser::parseAsset(const boost::property_tree::ptree& logEvent)
 
 void ZettaFullXmlParser::parseWeirdAsset(const boost::property_tree::ptree& logEvent)
 {
+    basic_log("WEIRD ASSET",INFO);
     result_["LogType"] = "Weird Asset";
 
     const boost::property_tree::ptree& asset = logEvent.get_child("AssetEvent.Asset");
@@ -257,7 +261,6 @@ void ZettaFullXmlParser::parseWeirdAsset(const boost::property_tree::ptree& logE
 // this populates the LogEventID, AirDate, AirStartTime, AirStopTime
 void ZettaFullXmlParser::parseDefaults(const boost::property_tree::ptree& logEvent)
 {
-
     result_["LogEventID"] = logEvent.get<std::string>("<xmlattr>.LogEventID");
     result_["AirStartTime"] = logEvent.get<std::string>("<xmlattr>.AirStarttime");
 
