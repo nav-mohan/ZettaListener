@@ -14,12 +14,18 @@
 #include <GLFW/glfw3.h>
 
 const char* glsl_version = "#version 330";
-void SetupGLFW() 
+bool SetupGLFW() 
 {
-    glfwInit();
+    if(!glfwInit())
+    {
+        printf("Failed to initialize GLFW\n");
+        glfwTerminate();
+        return false;
+    }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    return true;
 }
 
 void Cleanup(GLFWwindow* window) 
@@ -41,19 +47,6 @@ void SetupImGuiStyleAndFont() {
 
 int main(int argc, char *argv[])
 {
-    SetupGLFW();
-    GLFWwindow * window = glfwCreateWindow(800,600, "ZettaListener", nullptr,nullptr);
-    if(window == NULL) {printf("Failed to initialize window\n"); glfwTerminate();}
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
-    gladLoadGL();
-
-    ImGui::CreateContext();
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
-
-    SetupImGuiStyleAndFont();
-
     if (argc != 3)
     {
         printf("USAGE:   %s <TCP-PORT> <HTTP-PORT>\n",argv[0]);
@@ -92,6 +85,28 @@ int main(int argc, char *argv[])
     std::thread worker([&](){
         io_context.run();
     });
+
+    if(!SetupGLFW())
+    {
+        printf("Failed to Setup GLFW\n");
+        return -1;
+    }
+    GLFWwindow * window = glfwCreateWindow(window_width,window_height, "ZettaListener", nullptr,nullptr);
+    if(!window) 
+    {
+        printf("Failed to initialize window\n"); 
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
+    gladLoadGL();
+
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    SetupImGuiStyleAndFont();
 
     while(!glfwWindowShouldClose(window))
     {
