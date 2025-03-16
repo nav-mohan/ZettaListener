@@ -9,6 +9,27 @@ add_subdirectory(libs/xmlparser)
 add_subdirectory(libs/dbcon)
 add_subdirectory(libs/webapi)
 
+# must build GLAD and GLFW before IMGUI
+# disable WAYLAND backend for GLFW because I dont have wayland dev-tools
+set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "build for wayland backend")
+add_subdirectory(libs/glfw)
+add_subdirectory(libs/glad)
+
+# build-rules for IMGUI (ImGUI source-code does not have a CMakeLists)
+set (IMGUI_DIR libs/imgui)
+set (IMGUI_ESSENTIALS_SRC  
+	${IMGUI_DIR}/imgui.cpp 
+	${IMGUI_DIR}/imgui_draw.cpp 
+	${IMGUI_DIR}/imgui_widgets.cpp 
+	${IMGUI_DIR}/imgui_tables.cpp 
+	${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp 
+	${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+        )
+add_library(imgui ${IMGUI_ESSENTIALS_SRC})
+target_link_libraries(imgui glfw)
+target_include_directories(imgui PUBLIC ${IMGUI_DIR})
+
+
 add_executable(${TARGET_NAME} main.cpp)
 
 target_include_directories(
@@ -26,6 +47,9 @@ target_link_libraries(
     xmlparser
     dbcon
     webapi
+    glfw
+    glad
+    imgui
 )
 
 
