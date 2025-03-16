@@ -45,6 +45,17 @@ void SetupImGuiStyleAndFont() {
         ImGui_ImplOpenGL3_CreateFontsTexture();
 }
 
+int window_width = 1280;
+int window_height = 720;
+// Callback for handling window resizing
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) 
+{
+    window_width = width;
+    window_height = height;
+    glViewport(0, 0, width, height);
+}
+
+
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -101,6 +112,8 @@ int main(int argc, char *argv[])
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
     gladLoadGL();
+    
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
