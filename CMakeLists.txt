@@ -30,7 +30,7 @@ target_link_libraries(imgui glfw)
 target_include_directories(imgui PUBLIC ${IMGUI_DIR})
 
 
-add_executable(${TARGET_NAME} main.cpp)
+add_executable(${TARGET_NAME} main.cpp gui.cpp)
 
 target_include_directories(
     ${TARGET_NAME} PUBLIC 
