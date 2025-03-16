@@ -55,6 +55,28 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
+void RenderCustom()
+{
+        // Make the ImGui window fill the entire GLFW window
+        ImGui::SetNextWindowSize(ImVec2((float)window_width, (float)window_height), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        ImGui::Begin("##MainWindow", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+        // Fixed-position widgets inside the fullscreen window
+        ImGui::SetCursorPos(ImVec2(50, 50));
+        ImGui::Text("This window fills the entire screen!");
+
+        ImGui::SetCursorPos(ImVec2(50, 100));
+        static char buffer[128] = "Type here...";
+        ImGui::InputText("##Input", buffer, IM_ARRAYSIZE(buffer));
+
+        ImGui::SetCursorPos(ImVec2(50, 150));
+        if (ImGui::Button("Click Me")) {
+            // Button action
+        }
+
+        ImGui::End();
+}
 
 int main(int argc, char *argv[])
 {
@@ -127,6 +149,8 @@ int main(int argc, char *argv[])
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        
+        RenderCustom();
         
         ImGui::Render();
         int display_w, display_h;
