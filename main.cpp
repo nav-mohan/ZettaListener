@@ -89,7 +89,10 @@ int main(int argc, char *argv[])
     };
     TCPServer<ZettaFullXmlParser> s(io_context, tcpPort, writeToDatabase);
 
-    io_context.run();
+    std::thread worker([&](){
+        io_context.run();
+    });
+
     while(!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -106,6 +109,9 @@ int main(int argc, char *argv[])
         glfwSwapBuffers(window);
     }
     Cleanup(window);
+    
+    io_context.stop();
+    worker.join();
 
     return 0;
 }
